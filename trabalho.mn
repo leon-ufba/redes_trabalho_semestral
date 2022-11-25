@@ -8,10 +8,10 @@
             "nflowTimeout": "600"
         },
         "openFlowVersions": {
-            "ovsOf10": "1",
+            "ovsOf10": "0",
             "ovsOf11": "0",
             "ovsOf12": "0",
-            "ovsOf13": "0"
+            "ovsOf13": "1"
         },
         "sflow": {
             "sflowHeader": "128",
@@ -19,7 +19,7 @@
             "sflowSampling": "400",
             "sflowTarget": ""
         },
-        "startCLI": "0",
+        "startCLI": "1",
         "switchType": "ovs",
         "terminalType": "xterm"
     },
@@ -28,7 +28,7 @@
         {
             "number": "1",
             "opts": {
-                "hostname": "h1 (vendas)",
+                "hostname": "vendas",
                 "ip": "10.100.80.1/8",
                 "nodeNum": 1,
                 "sched": "host"
@@ -39,7 +39,7 @@
         {
             "number": "2",
             "opts": {
-                "hostname": "h2 (visitante1)",
+                "hostname": "visitante1",
                 "ip": "10.100.254.1/8",
                 "nodeNum": 2,
                 "sched": "host"
@@ -50,7 +50,7 @@
         {
             "number": "3",
             "opts": {
-                "hostname": "h3 (visitante2)",
+                "hostname": "visitante2",
                 "ip": "10.100.254.2/8",
                 "nodeNum": 3,
                 "sched": "host"
@@ -61,7 +61,7 @@
         {
             "number": "4",
             "opts": {
-                "hostname": "h4 (recepcao)",
+                "hostname": "recepcao",
                 "ip": "10.100.90.1/8",
                 "nodeNum": 4,
                 "sched": "host"
@@ -72,7 +72,7 @@
         {
             "number": "5",
             "opts": {
-                "hostname": "h5 (rh)",
+                "hostname": "rh",
                 "ip": "10.100.70.1/8",
                 "nodeNum": 5,
                 "sched": "host"
@@ -83,7 +83,7 @@
         {
             "number": "6",
             "opts": {
-                "hostname": "h6 (diretoria)",
+                "hostname": "diretoria",
                 "ip": "10.100.60.1/8",
                 "nodeNum": 6,
                 "sched": "host"
@@ -94,7 +94,7 @@
         {
             "number": "7",
             "opts": {
-                "hostname": "h7 (financeiro)",
+                "hostname": "financeiro",
                 "ip": "10.100.50.1/8",
                 "nodeNum": 7,
                 "sched": "host"
@@ -105,7 +105,7 @@
         {
             "number": "8",
             "opts": {
-                "hostname": "h8 (ti)",
+                "hostname": "ti",
                 "ip": "10.100.2.1/8",
                 "nodeNum": 8,
                 "sched": "host"
@@ -116,7 +116,7 @@
         {
             "number": "9",
             "opts": {
-                "hostname": "h9 (internet)",
+                "hostname": "internet",
                 "ip": "10.100.1.1/8",
                 "nodeNum": 9,
                 "sched": "host"
@@ -127,74 +127,74 @@
     ],
     "links": [
         {
-            "dest": "s2 (acesso A2)",
+            "dest": "s2",
             "opts": {},
-            "src": "s1 (distribuicao A)"
+            "src": "s1"
         },
         {
-            "dest": "s3 (acesso A1)",
+            "dest": "s3",
             "opts": {},
-            "src": "s2 (acesso A2)"
+            "src": "s2"
         },
         {
-            "dest": "s4 (distribuicao B)",
+            "dest": "s4",
             "opts": {},
-            "src": "s1 (distribuicao A)"
+            "src": "s1"
         },
         {
-            "dest": "s5 (acesso B1)",
+            "dest": "s5",
             "opts": {},
-            "src": "s4 (distribuicao B)"
+            "src": "s4"
         },
         {
-            "dest": "s6 (acesso B2)",
+            "dest": "s6",
             "opts": {},
-            "src": "s4 (distribuicao B)"
+            "src": "s4"
         },
         {
-            "dest": "s2 (acesso A2)",
+            "dest": "s2",
             "opts": {},
-            "src": "h1 (vendas)"
+            "src": "vendas"
         },
         {
-            "dest": "s3 (acesso A1)",
+            "dest": "s3",
             "opts": {},
-            "src": "h2 (visitante1)"
+            "src": "visitante1"
         },
         {
-            "dest": "s3 (acesso A1)",
+            "dest": "s3",
             "opts": {},
-            "src": "h3 (visitante2)"
+            "src": "visitante2"
         },
         {
-            "dest": "s3 (acesso A1)",
+            "dest": "s3",
             "opts": {},
-            "src": "h4 (recepcao)"
+            "src": "recepcao"
         },
         {
-            "dest": "s5 (acesso B1)",
+            "dest": "s5",
             "opts": {},
-            "src": "h5 (rh)"
+            "src": "rh"
         },
         {
-            "dest": "s5 (acesso B1)",
+            "dest": "s5",
             "opts": {},
-            "src": "h6 (diretoria)"
+            "src": "diretoria"
         },
         {
-            "dest": "s5 (acesso B1)",
+            "dest": "s5",
             "opts": {},
-            "src": "h7 (financeiro)"
+            "src": "financeiro"
         },
         {
-            "dest": "s6 (acesso B2)",
+            "dest": "s6",
             "opts": {},
-            "src": "h8 (ti)"
+            "src": "ti"
         },
         {
-            "dest": "s6 (acesso B2)",
+            "dest": "s6",
             "opts": {},
-            "src": "h9 (internet)"
+            "src": "internet"
         }
     ],
     "switches": [
@@ -202,7 +202,8 @@
             "number": "1",
             "opts": {
                 "controllers": [],
-                "hostname": "s1 (distribuicao A)",
+                "dpid": "0000000000000001",
+                "hostname": "s1",
                 "netflow": "0",
                 "nodeNum": 1,
                 "sflow": "0",
@@ -216,7 +217,8 @@
             "number": "2",
             "opts": {
                 "controllers": [],
-                "hostname": "s2 (acesso A2)",
+                "dpid": "0000000000000002",
+                "hostname": "s2",
                 "netflow": "0",
                 "nodeNum": 2,
                 "sflow": "0",
@@ -230,7 +232,8 @@
             "number": "3",
             "opts": {
                 "controllers": [],
-                "hostname": "s3 (acesso A1)",
+                "dpid": "0000000000000003",
+                "hostname": "s3",
                 "netflow": "0",
                 "nodeNum": 3,
                 "sflow": "0",
@@ -244,7 +247,8 @@
             "number": "4",
             "opts": {
                 "controllers": [],
-                "hostname": "s4 (distribuicao B)",
+                "dpid": "0000000000000004",
+                "hostname": "s4",
                 "netflow": "0",
                 "nodeNum": 4,
                 "sflow": "0",
@@ -258,7 +262,8 @@
             "number": "5",
             "opts": {
                 "controllers": [],
-                "hostname": "s5 (acesso B1)",
+                "dpid": "0000000000000005",
+                "hostname": "s5",
                 "netflow": "0",
                 "nodeNum": 5,
                 "sflow": "0",
@@ -272,7 +277,8 @@
             "number": "6",
             "opts": {
                 "controllers": [],
-                "hostname": "s6 (acesso B2)",
+                "dpid": "0000000000000006",
+                "hostname": "s6",
                 "netflow": "0",
                 "nodeNum": 6,
                 "sflow": "0",
