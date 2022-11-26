@@ -1,4 +1,6 @@
 import json
+import re
+import datetime
 
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -29,6 +31,7 @@ class SimpleSwitch(app_manager.RyuApp):
     # learn mac addresses on each port of each switch
     self.mac_to_port = {}
     self.hostsBySegs = {}
+    self.bandwidthRules = []
     self.allowRules = []
     self.denyRules = []
 
@@ -39,35 +42,137 @@ class SimpleSwitch(app_manager.RyuApp):
         return seg
     return None
 
-  def isDenied(self, src, dst, src_seg, dst_seg):
+  def mapDay(self, day):
+    dayDict = { 'seg': 0, 'ter': 1, 'qua': 2, 'qui': 3, 'sex': 4, 'sab': 5, 'dom': 6 }
+    return dayDict[day] if(day in dayDict) else None
+
+  def parseTime(self, tstr):
+    if(tstr == None):
+      return None
+    try:
+      n = tstr.lower().replace('á', 'a')
+      l = re.split(r' |-|:', n)
+      if(len(l) != 6):
+        return None
+      l[0] = self.mapDay(l[0])
+      l[1] = self.mapDay(l[1])
+      if(l[0] == None or l[1] == None):
+        return None
+      l[2:] = map(int, l[2:])
+      if((l[2] < 0 or l[2] > 23) or (l[3] < 0 or l[3] > 59) or (l[4] < 0 or l[4] > 23) or (l[5] < 0 or l[5] > 59)):
+        return None
+      return tuple(l)
+    except:
+      return None
+  
+  def isOnTime(self, r):
+    l = self.parseTime(r.get('horario'))
+    if(l == None):
+      return True
+    else:
+      startWeekDay, endWeekDay, startHour, startMinute, endHour, endMinute = l
+      now = datetime.datetime.today()
+      nowWeekDay = now.weekday()
+      nowHour = now.hour
+      nowMinute = now.minute
+      if(startWeekDay <= endWeekDay):
+        if(nowWeekDay < startWeekDay or nowWeekDay > endWeekDay):
+          return False
+      else:
+        if(nowWeekDay < startWeekDay and nowWeekDay > endWeekDay):
+          return False
+
+      if(nowHour < startHour or nowHour > endHour):
+        return False
+      elif(nowHour == startHour and nowMinute < startMinute):
+        return False
+      elif(nowHour == endHour and nowMinute > endMinute):
+        return False
+      
+      return True
+
+  def checkRules(self, rules, src, dst, src_seg, dst_seg):
+    priority = 4
+    reverseWay = True
+    check = False
     if(src_seg == None or dst_seg == None):
-      return False
-    
-    
+      return check, priority
+    else:
+      for r in rules:
+        if(priority > 1 and r.get('host_a') == src and r.get('host_b') == dst):
+          if(self.isOnTime(r)):
+            check = True
+            priority = 1
+        if(priority > 1 and r.get('host_a') == dst and r.get('host_b') == src and reverseWay):
+          if(self.isOnTime(r)):
+            check = True
+            priority = 1
+        if(priority > 2 and r.get('host') == src and r.get('segmento') == dst_seg):
+          if(self.isOnTime(r)):
+            check = True
+            priority = 2
+        if(priority > 2 and r.get('host') == dst and r.get('segmento') == src_seg and reverseWay):
+          if(self.isOnTime(r)):
+            check = True
+            priority = 2
+        if(priority > 3 and r.get('segmento_a') == src_seg and r.get('segmento_b') == dst_seg):
+          if(self.isOnTime(r)):
+            check = True
+            priority = 3
+        if(priority > 3 and r.get('segmento_a') == dst_seg and r.get('segmento_b') == src_seg and reverseWay):
+          if(self.isOnTime(r)):
+            check = True
+            priority = 3
+      return check, priority
+
+  def isDenied(self, src, dst, src_seg, dst_seg):
+    return self.checkRules(self.denyRules, src, dst, src_seg, dst_seg)
+
+  def isAllowed(self, src, dst, src_seg, dst_seg):
+    return self.checkRules(self.allowRules, src, dst, src_seg, dst_seg)
+
+  def canPass(self, src, dst, src_seg, dst_seg):
+    denied, deniedPriority = self.isDenied(src, dst, src_seg, dst_seg)
+    allowed, allowedPriority = self.isAllowed(src, dst, src_seg, dst_seg)
+    if(deniedPriority > allowedPriority):
+      return allowed
+    elif(deniedPriority < allowedPriority):
+      return not denied
+    else:
+      return not denied
 
   def add_flow(self, datapath, match, actions, priority=1000, buffer_id=None):
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
 
-    inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                          actions)]
+    inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
     if buffer_id:
-      mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                              priority=priority, match=match,
-                              instructions=inst)
+      mod = parser.OFPFlowMod(
+        datapath=datapath,
+        buffer_id=buffer_id,
+        priority=priority,
+        match=match,
+        instructions=inst
+      )
     else:
-      mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                              match=match, instructions=inst)
+      mod = parser.OFPFlowMod(
+        datapath=datapath,
+        priority=priority,
+        match=match,
+        instructions=inst
+      )
     datapath.send_msg(mod)
 
   def delete_flow(self, datapath):
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     match = parser.OFPMatch()
-    mod = parser.OFPFlowMod(datapath, command=ofproto.OFPFC_DELETE, match=match,
-                            out_port=ofproto.OFPP_ANY,
-                            out_group=ofproto.OFPG_ANY,
-                            )
+    mod = parser.OFPFlowMod(
+      datapath,
+      command=ofproto.OFPFC_DELETE, match=match,
+      out_port=ofproto.OFPP_ANY,
+      out_group=ofproto.OFPG_ANY,
+    )
     datapath.send_msg(mod)
 
   @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -78,8 +183,7 @@ class SimpleSwitch(app_manager.RyuApp):
     parser = dp.ofproto_parser
     self.delete_flow(dp)
     match = parser.OFPMatch()
-    actions = [parser.OFPActionOutput(ofp.OFPP_CONTROLLER,
-                                      ofp.OFPCML_NO_BUFFER)]
+    actions = [parser.OFPActionOutput(ofp.OFPP_CONTROLLER, ofp.OFPCML_NO_BUFFER)]
     self.add_flow(dp, match, actions, priority=0)
 
   @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
@@ -148,6 +252,32 @@ class SimpleSwitchController(ControllerBase):
   def __init__(self, req, link, data, **config):
       super(SimpleSwitchController, self).__init__(req, link, data, **config)
       self.simple_switch_app = data[myapp_name]
+
+  # debug
+  @route('', '/debug/', methods=['POST'])
+  def dbg(self, req, **kwargs):
+    try:
+      d = req.json_body
+
+      src = d.get('src')
+      dst = d.get('dst')
+
+      src_seg = self.simple_switch_app.whichSegment(src)
+      dst_seg = self.simple_switch_app.whichSegment(dst)
+
+      canPass = self.simple_switch_app.canPass(src, dst, src_seg, dst_seg)
+
+      body = json.dumps({
+        'src': src,
+        'src_seg': src_seg,
+        'dst': dst,
+        'dst_seg': dst_seg,
+        'canPass': canPass,
+      })
+      
+      return Response(content_type='application/json', body=str(body))
+    except Exception as e:
+      return Response(status=500, body=str(e))
 
   # questão 1
   @route('', '/nac/segmentos/', methods=['POST'])
