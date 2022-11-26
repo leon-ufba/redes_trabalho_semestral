@@ -32,6 +32,19 @@ class SimpleSwitch(app_manager.RyuApp):
     self.allowRules = []
     self.denyRules = []
 
+  def whichSegment(self, mac):
+    hostsBySegs = self.hostsBySegs
+    for seg in hostsBySegs:
+      if mac in hostsBySegs[seg]:
+        return seg
+    return None
+
+  def isDenied(self, src, dst, src_seg, dst_seg):
+    if(src_seg == None or dst_seg == None):
+      return False
+    
+    
+
   def add_flow(self, datapath, match, actions, priority=1000, buffer_id=None):
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
@@ -80,8 +93,11 @@ class SimpleSwitch(app_manager.RyuApp):
     pkt = packet.Packet(msg.data)
     eth = pkt.get_protocols(ethernet.ethernet)[0]
 
-    dst = eth.dst
     src = eth.src
+    dst = eth.dst
+
+    src_seg = self.whichSegment(src)
+    dst_seg = self.whichSegment(dst)
 
     # print([src, dst])
 
@@ -141,10 +157,8 @@ class SimpleSwitchController(ControllerBase):
       hostsBySegs = self.simple_switch_app.hostsBySegs
       for seg in d:
         if(seg in hostsBySegs):
-          print("already")
           hostsBySegs[seg].extend(x for x in d[seg] if x not in hostsBySegs[seg])
         else:
-          print("adding")
           hostsBySegs[seg] = d[seg]
       body = json.dumps(hostsBySegs)
       return Response(content_type='application/json', body=body)
@@ -196,10 +210,11 @@ class SimpleSwitchController(ControllerBase):
       d = req.json_body
       allowRules = self.simple_switch_app.allowRules
       denyRules  = self.simple_switch_app.denyRules
-      if(d['acao'] == 'permitir'):
+      print(d.get('acao'))
+      if(d.get('acao') == 'permitir'):
         if(d not in allowRules):
           allowRules.append(d)
-      elif(d['acao'] == 'bloquear'):
+      elif(d.get('acao') == 'bloquear'):
         if(d not in denyRules):
           denyRules.append(d)
       body = json.dumps([*allowRules, *denyRules])
@@ -225,10 +240,10 @@ class SimpleSwitchController(ControllerBase):
       d = req.json_body
       allowRules = self.simple_switch_app.allowRules
       denyRules  = self.simple_switch_app.denyRules
-      if(d['acao'] == 'permitir'):
+      if(d.get('acao') == 'permitir'):
         if(d in allowRules):
           allowRules.remove(d)
-      elif(d['acao'] == 'bloquear'):
+      elif(d.get('acao') == 'bloquear'):
         if(d in denyRules):
           denyRules.remove(d)
       body = json.dumps([*allowRules, *denyRules])
