@@ -26,34 +26,34 @@ def myNetwork():
     acessoB2      = net.addSwitch('s6', cls=OVSKernelSwitch, dpid='0000000000000006')
 
     info( '*** Add hosts\n')
-    vendas     = net.addHost('vendas',     cls=Host, ip='10.100.80.1/8',  defaultRoute=None)
-    visitante1 = net.addHost('visitante1', cls=Host, ip='10.100.254.1/8', defaultRoute=None)
-    visitante2 = net.addHost('visitante2', cls=Host, ip='10.100.254.2/8', defaultRoute=None)
-    recepcao   = net.addHost('recepcao',   cls=Host, ip='10.100.90.1/8',  defaultRoute=None)
-    rh         = net.addHost('rh',         cls=Host, ip='10.100.70.1/8',  defaultRoute=None)
-    diretoria  = net.addHost('diretoria',  cls=Host, ip='10.100.60.1/8',  defaultRoute=None)
-    financeiro = net.addHost('financeiro', cls=Host, ip='10.100.50.1/8',  defaultRoute=None)
-    ti         = net.addHost('ti',         cls=Host, ip='10.100.2.1/8',   defaultRoute=None)
-    internet   = net.addHost('internet',   cls=Host, ip='10.100.1.1/8',   defaultRoute=None)
+    visitante1 = net.addHost('visitante1', cls=Host, ip='10.100.254.1/8', defaultRoute=None, mac='00:00:00:00:00:f1')
+    visitante2 = net.addHost('visitante2', cls=Host, ip='10.100.254.2/8', defaultRoute=None, mac='00:00:00:00:00:f2')
+    recepcao   = net.addHost('recepcao',   cls=Host, ip='10.100.90.1/8',  defaultRoute=None, mac='00:00:00:00:00:f3')
+    vendas     = net.addHost('vendas',     cls=Host, ip='10.100.80.1/8',  defaultRoute=None, mac='00:00:00:00:00:f4')
+    rh         = net.addHost('rh',         cls=Host, ip='10.100.70.1/8',  defaultRoute=None, mac='00:00:00:00:00:f5')
+    diretoria  = net.addHost('diretoria',  cls=Host, ip='10.100.60.1/8',  defaultRoute=None, mac='00:00:00:00:00:f6')
+    financeiro = net.addHost('financeiro', cls=Host, ip='10.100.50.1/8',  defaultRoute=None, mac='00:00:00:00:00:f7')
+    ti         = net.addHost('ti',         cls=Host, ip='10.100.2.1/8',   defaultRoute=None, mac='00:00:00:00:00:f8')
+    internet   = net.addHost('internet',   cls=Host, ip='10.100.1.1/8',   defaultRoute=None, mac='00:00:00:00:00:f9')
 
     info( '*** Add links\n')
-    net.addLink(visitante1, acessoA1)
-    net.addLink(visitante2, acessoA1)
-    net.addLink(recepcao,   acessoA1)
-    net.addLink(acessoA1,   acessoA2)
-    net.addLink(vendas,     acessoA2)
-    net.addLink(acessoA2,   distribuicaoA)
+    net.addLink(visitante1, acessoA1, 0, 1)
+    net.addLink(visitante2, acessoA1, 0, 2)
+    net.addLink(recepcao,   acessoA1, 0, 3)
+    net.addLink(acessoA1,   acessoA2, 4, 1)
+    net.addLink(vendas,     acessoA2, 0, 2)
+    net.addLink(acessoA2,   distribuicaoA, 3, 1)
 
-    net.addLink(rh,         acessoB1)
-    net.addLink(diretoria,  acessoB1)
-    net.addLink(financeiro, acessoB1)
-    net.addLink(acessoB1,   distribuicaoB)
+    net.addLink(rh,         acessoB1, 0, 1)
+    net.addLink(diretoria,  acessoB1, 0, 2)
+    net.addLink(financeiro, acessoB1, 0, 3)
+    net.addLink(acessoB1,   distribuicaoB, 4, 1)
 
-    net.addLink(ti,         acessoB2)
-    net.addLink(internet,   acessoB2)
-    net.addLink(acessoB2,   distribuicaoB)
+    net.addLink(ti,         acessoB2, 0, 1)
+    net.addLink(internet,   acessoB2, 0, 2)
+    net.addLink(acessoB2,   distribuicaoB, 3, 2)
 
-    net.addLink(distribuicaoA, distribuicaoB)
+    net.addLink(distribuicaoA, distribuicaoB, 2, 3)
 
     info( '*** Starting network\n')
     net.build()
@@ -71,11 +71,30 @@ def myNetwork():
 
     info( '*** Post configure switches and hosts\n')
 
-    for s in net.switches:
-        run(['sudo', 'ovs-vsctl', 'set-controller', str(s), 'tcp:127.0.0.1:6653'])
+    try:
+        for s in net.switches:
+            run(['sudo', 'ovs-vsctl', 'set-controller', str(s), 'tcp:127.0.0.1:6653'])
+        
+        rates = [int(x) for x in [0e6, 1e6, 10e6, 20e6]]
+        # for l in [net.links[3]]:
+        #     for r in rates:
+        #         commands = ['sudo', 'ovs-vsctl', 'set', 'port', '', 'qos=@newqos', '--', '--id=@newqos', 'create', 'qos', 'type=linux-htb', 'queues:1=@newqueue', '--', '--id=@newqueue', 'create', 'queue', f'other-config:min-rate={r}', f'other-config:max-rate={r}']
+        #         if(r == 0):
+        #             commands.pop()
+        #             commands.pop()
+        #         commands[4] = str(l.intf1)
+        #         run(commands)
+        #         print('')
+        #         # commands[4] = str(l.intf2)
+        #         # run(commands)
+        print('__OK__')
+        CLI(net)
+        net.stop()
+    except Exception as e:
+        print(e)
+        print('ERROR')
+        net.stop()
 
-    CLI(net)
-    net.stop()
 
 if __name__ == '__main__':
     setLogLevel( 'info' )
