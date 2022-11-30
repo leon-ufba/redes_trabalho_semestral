@@ -147,7 +147,7 @@ class SimpleSwitch(app_manager.RyuApp):
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
 
-    hard_timeout =  3 if hto else 0
+    hard_timeout = 3 if hto else 0
     
     inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)] if actions else []
     if buffer_id:
@@ -185,7 +185,6 @@ class SimpleSwitch(app_manager.RyuApp):
   @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
   def switch_features_handler(self, ev):
     msg = ev.msg
-    # salvar dp em um mapa
     dp = ev.msg.datapath
     ofp = dp.ofproto
     parser = dp.ofproto_parser
@@ -204,10 +203,8 @@ class SimpleSwitch(app_manager.RyuApp):
 
     pkt = packet.Packet(msg.data)
     eth = pkt.get_protocols(ethernet.ethernet)[0]
-    ip = pkt.get_protocols(ipv4.ipv4)
 
-
-    print(dp.ports)
+    # print(dp.ports)
 
     src = eth.src
     dst = eth.dst
@@ -217,10 +214,10 @@ class SimpleSwitch(app_manager.RyuApp):
 
     canPass = self.canPass(src, dst, src_seg, dst_seg)
 
-    # if('00:00:00:00:00:f1' in [src, dst] and '00:00:00:00:00:f9' in [src, dst]):
-    #   global counter
-    #   print([str(datetime.now()), [src, dst, canPass], counter])
-    #   counter = counter + 1
+    if('00:00:00:00:00:f1' in [src, dst] and '00:00:00:00:00:f9' in [src, dst]):
+      global counter
+      print([str(datetime.now()), [src, dst, canPass], counter])
+      counter = counter + 1
 
     dpid = dp.id
     self.mac_to_port.setdefault(dpid, {})
@@ -251,11 +248,11 @@ class SimpleSwitch(app_manager.RyuApp):
       # flow_mod & packet_out
 
       if(not canPass):
+        # bloqueio com actions vazio
         self.add_flow(True, dp, match, [])
         return
 
       if msg.buffer_id != ofp.OFP_NO_BUFFER:
-        # bloqueio drop com actions vazio
         self.add_flow(True, dp, match, actions, buffer_id=msg.buffer_id)
         return
       else:
