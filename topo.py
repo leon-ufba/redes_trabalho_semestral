@@ -76,19 +76,19 @@ def myNetwork():
       run(['sudo', 'ovs-vsctl', 'set-controller', str(s), 'tcp:127.0.0.1:6653'])
     
     rates = [int(x) for x in [1e6, 10e6, 20e6]]
-    # for s in net.switches:
-    #   intfs = list(net.get(str(s)).intfs.values())
-    #   for i in range(1, len(intfs)):
-    #     for r in range(len(rates)):
-    #       intf = str(intfs[i])
-    #       queueId = list(map(lambda x : int(x[-1]), intf.split('-')))
-    #       queueId = queueId[0] * 100 + queueId[1] * 10 + r
-    #       commands = [
-    #         'sudo', 'ovs-vsctl', 'set', 'port', intf, 'qos=@newqos', '--',
-    #         '--id=@newqos', 'create', 'qos', 'type=linux-htb', f'queues:{queueId}=@newqueue', '--',
-    #         '--id=@newqueue', 'create', 'queue', f'other-config:min-rate={rates[r]}', f'other-config:max-rate={rates[r]}'
-    #       ]
-    #       run(commands)
+    for s in net.switches:
+      intfs = list(net.get(str(s)).intfs.values())
+      for i in range(1, len(intfs)):
+        for r in range(len(rates)):
+          intf = str(intfs[i])
+          queueId = list(map(lambda x : int(x[-1]), intf.split('-')))
+          queueId = queueId[0] * 100 + queueId[1] * 10 + r
+          commands = [
+            'sudo', 'ovs-vsctl', 'set', 'port', intf, 'qos=@newqos', '--',
+            '--id=@newqos', 'create', 'qos', 'type=linux-htb', f'queues:{queueId}=@newqueue', '--',
+            '--id=@newqueue', 'create', 'queue', f'other-config:min-rate={rates[r]}', f'other-config:max-rate={rates[r]}'
+          ]
+          run(commands)
     print('__OK__')
     CLI(net)
     net.stop()

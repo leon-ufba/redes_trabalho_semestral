@@ -18,6 +18,26 @@ from ryu.lib import dpid as dpid_lib
 myapp_name = 'simpleswitch'
 counter = 0
 
+portByMacBySwitch = {
+  2: {
+    '00:00:00:00:00:f4': 2,
+  },
+  3: {
+    '00:00:00:00:00:f1': 1,
+    '00:00:00:00:00:f2': 2,
+    '00:00:00:00:00:f3': 3,
+  },
+  5: {
+    '00:00:00:00:00:f5': 1,
+    '00:00:00:00:00:f6': 2,
+    '00:00:00:00:00:f7': 3,
+  },
+  6: {
+    '00:00:00:00:00:f8': 1,
+    '00:00:00:00:00:f9': 2,
+  },
+}
+
 class SimpleSwitch(app_manager.RyuApp):
   _CONTEXTS = {'wsgi': WSGIApplication}
   OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -142,6 +162,46 @@ class SimpleSwitch(app_manager.RyuApp):
       return not denied
     else:
       return not denied
+  
+  def bandLimit(self, src, dst, src_seg, dst_seg):
+    limit = 3
+    priority = 4
+    reverseWay = True
+    limitDict = { '1Mbps': 0, '10Mbps': 1, '20Mbps': 2 }
+    if(src_seg == None or dst_seg == None):
+      return None
+    else:
+      for r in self.bandwidthRules:
+        l = limitDict.get(r.get('banda_download'))
+        l = 3 if (l == None) else l
+        if(l > limit):
+          continue
+        if(priority >= 1 and r.get('host_a') == src and r.get('host_b') == dst):
+          if(self.isOnTime(r)):
+            limit = l
+            priority = 1
+        if(priority >= 1 and r.get('host_a') == dst and r.get('host_b') == src and reverseWay):
+          if(self.isOnTime(r)):
+            limit = l
+            priority = 1
+        if(priority >= 2 and r.get('host') == src and r.get('segmento') == dst_seg):
+          if(self.isOnTime(r)):
+            limit = l
+            priority = 2
+        if(priority >= 2 and r.get('host') == dst and r.get('segmento') == src_seg and reverseWay):
+          if(self.isOnTime(r)):
+            limit = l
+            priority = 2
+        if(priority >= 3 and r.get('segmento_a') == src_seg and r.get('segmento_b') == dst_seg):
+          if(self.isOnTime(r)):
+            limit = l
+            priority = 3
+        if(priority >= 3 and r.get('segmento_a') == dst_seg and r.get('segmento_b') == src_seg and reverseWay):
+          if(self.isOnTime(r)):
+            limit = l
+            priority = 3
+      limit = limit if (limit < 3) else None
+      return limit
 
   def add_flow(self, hto, datapath, match, actions, priority=1000, buffer_id=None):
     ofproto = datapath.ofproto
@@ -195,6 +255,8 @@ class SimpleSwitch(app_manager.RyuApp):
 
   @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
   def packet_in_handler(self, ev):
+    global portByMacBySwitch, counter
+
     msg = ev.msg
     dp = msg.datapath
     ofp = dp.ofproto
@@ -204,8 +266,6 @@ class SimpleSwitch(app_manager.RyuApp):
     pkt = packet.Packet(msg.data)
     eth = pkt.get_protocols(ethernet.ethernet)[0]
 
-    # print(dp.ports)
-
     src = eth.src
     dst = eth.dst
 
@@ -213,11 +273,6 @@ class SimpleSwitch(app_manager.RyuApp):
     dst_seg = self.whichSegment(dst)
 
     canPass = self.canPass(src, dst, src_seg, dst_seg)
-
-    if('00:00:00:00:00:f1' in [src, dst] and '00:00:00:00:00:f9' in [src, dst]):
-      global counter
-      print([str(datetime.now()), [src, dst, canPass], counter])
-      counter = counter + 1
 
     dpid = dp.id
     self.mac_to_port.setdefault(dpid, {})
@@ -234,21 +289,24 @@ class SimpleSwitch(app_manager.RyuApp):
 
     # install a flow to avoid packet_in next time
     if out_port != ofp.OFPP_FLOOD:
-      # if dpid == 1 and out_port == 1:
-      #   actions.insert(0, ofp_parser.OFPActionSetQueue(queue_id=1))
-      # elif dpid == 1 and out_port == 2:
-      #   actions.insert(0, ofp_parser.OFPActionSetQueue(queue_id=2))
-      # elif dpid == 2 and out_port == 1:
-      #   actions.insert(0, ofp_parser.OFPActionSetQueue(queue_id=3))
-      # elif dpid == 2 and out_port == 2:
-      #   actions.insert(0, ofp_parser.OFPActionSetQueue(queue_id=4))
+
+      queue_id = None
+      limit = self.bandLimit(src, dst, src_seg, dst_seg)
+      portOfSwitch = portByMacBySwitch.get(dp.id)
+      p = portOfSwitch.get(src) if portOfSwitch else None
+      if(dpid != None and p != None and limit != None):
+        queue_id = str(dpid) + str(p) + str(limit)
+        queue_id = int(queue_id)
+      if(queue_id != None):
+        actions.insert(0, ofp_parser.OFPActionSetQueue(queue_id=queue_id))
+      
+      # counter = counter + 1
+      # if('00:00:00:00:00:f1' in [src, dst] and '00:00:00:00:00:f9' in [src, dst]):
+      #   print([str(datetime.now()), [src, dst, canPass, queue_id], counter])
 
       match = ofp_parser.OFPMatch(in_port=in_port, eth_dst=dst)
-      # verify if we have a valid buffer_id, if yes avoid to send both
-      # flow_mod & packet_out
 
       if(not canPass):
-        # bloqueio com actions vazio
         self.add_flow(True, dp, match, [])
         return
 
@@ -360,14 +418,18 @@ class SimpleSwitchController(ControllerBase):
       d = req.json_body
       allowRules = self.simple_switch_app.allowRules
       denyRules  = self.simple_switch_app.denyRules
-      print(d.get('acao'))
-      if(d.get('acao') == 'permitir'):
-        if(d not in allowRules):
-          allowRules.append(d)
-      elif(d.get('acao') == 'bloquear'):
-        if(d not in denyRules):
-          denyRules.append(d)
-      body = json.dumps([*allowRules, *denyRules])
+      bandwidthRules  = self.simple_switch_app.bandwidthRules
+      if(d.get('banda_download')):
+        if(d not in bandwidthRules):
+          bandwidthRules.append(d)
+      else:
+        if(d.get('acao') == 'permitir'):
+          if(d not in allowRules):
+            allowRules.append(d)
+        elif(d.get('acao') == 'bloquear'):
+          if(d not in denyRules):
+            denyRules.append(d)
+      body = json.dumps([*allowRules, *denyRules, *bandwidthRules])
       return Response(content_type='application/json', body=body)
     except:
       return Response(status=500)
@@ -378,7 +440,8 @@ class SimpleSwitchController(ControllerBase):
     try:
       allowRules = self.simple_switch_app.allowRules
       denyRules  = self.simple_switch_app.denyRules
-      body = json.dumps([*allowRules, *denyRules])
+      bandwidthRules  = self.simple_switch_app.bandwidthRules
+      body = json.dumps([*allowRules, *denyRules, *bandwidthRules])
       return Response(content_type='application/json', body=body)
     except:
       return Response(status=500)
@@ -390,13 +453,18 @@ class SimpleSwitchController(ControllerBase):
       d = req.json_body
       allowRules = self.simple_switch_app.allowRules
       denyRules  = self.simple_switch_app.denyRules
-      if(d.get('acao') == 'permitir'):
-        if(d in allowRules):
-          allowRules.remove(d)
-      elif(d.get('acao') == 'bloquear'):
-        if(d in denyRules):
-          denyRules.remove(d)
-      body = json.dumps([*allowRules, *denyRules])
+      bandwidthRules  = self.simple_switch_app.bandwidthRules
+      if(d.get('banda_download')):
+        if(d in bandwidthRules):
+          bandwidthRules.remove(d)
+      else:
+        if(d.get('acao') == 'permitir'):
+          if(d in allowRules):
+            allowRules.remove(d)
+        elif(d.get('acao') == 'bloquear'):
+          if(d in denyRules):
+            denyRules.remove(d)
+      body = json.dumps([*allowRules, *denyRules, *bandwidthRules])
       return Response(content_type='application/json', body=body)
     except:
       return Response(status=500)
