@@ -147,7 +147,7 @@ Além disso, para determinar se uma comunicação pode ser estabelecida, verific
 |:---:|:---:|
 | 1 | Host - Host |
 | 2 | Host - Segmento|
-| 2 | Segmento - Segmento|
+| 3 | Segmento - Segmento|
 
 Onde 1 representa a maior prioridade e 3 a menor prioridade.
 
