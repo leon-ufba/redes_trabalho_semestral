@@ -10,40 +10,40 @@
 
 ---
 
-### Neste documento, ser„o descritas as etapas de desenvolvimento para implementaÁ„o de uma rede corporativa, conforme especificaÁıes do roteiro disponibilizado.
+### Neste documento, ser√£o descritas as etapas de desenvolvimento para implementa√ß√£o de uma rede corporativa, conforme especifica√ß√µes do roteiro disponibilizado.
 
-1. [Versıes Utilizadas](#Versoes)
+1. [Vers√µes Utilizadas](#Versoes)
 1. [Topologia](#Topologia)
 2. [SDN](#SDN)
 3. [Testes da Interface REST](#REST)
-4. [Testes Funcionais (ExecuÁ„o do cÛdigo)](#Testes)
+4. [Testes Funcionais (Execu√ß√£o do c√≥digo)](#Testes)
 
-## Versıes utilizadas <a name="Versoes"/>
+## Vers√µes utilizadas <a name="Versoes"/>
 
-Para realizaÁ„o deste trabalho, a m·quina virtual que j· continha o Mininet **n„o** foi utilizada. Devido a incompatibilidades referentes a vers„o do Python e problemas com autorizaÁıes para alterar arquivos do sistema, o grupo optou por utilizar uma outra vers„o.
-As versıes utilizadas est„o dispostas a seguir:
+Para realiza√ß√£o deste trabalho, a m√°quina virtual que j√° continha o Mininet **n√£o** foi utilizada. Devido a incompatibilidades referentes a vers√£o do Python e problemas com autoriza√ß√µes para alterar arquivos do sistema, o grupo optou por utilizar uma outra vers√£o.
+As vers√µes utilizadas est√£o dispostas a seguir:
 
-- VM Ubuntu 22.04 (atravÈs do Virtual Box)
+- VM Ubuntu 22.04 (atrav√©s do Virtual Box)
 - Python 3.8.10
 - Mininet 2.3.1b1
 - Ryu 4.34
 
-Caso no momento da execuÁ„o do controlador, explicada mais a frente na seÁ„o [Testes Funcionais (ExecuÁ„o do cÛdigo)](#Testes),  seja exibido algum erro referente ao Eventlet, recomenda-se a desinstalar a vers„o atual e instalar a vers„o 0.30.2 do pacote, atravÈs dos comandos a seguir:
+Caso no momento da execu√ß√£o do controlador, explicada mais a frente na se√ß√£o [Testes Funcionais (Execu√ß√£o do c√≥digo)](#Testes),  seja exibido algum erro referente ao Eventlet, recomenda-se a desinstalar a vers√£o atual e instalar a vers√£o 0.30.2 do pacote, atrav√©s dos comandos a seguir:
 ```console
 pip uninstall eventlet
 pip install eventlet==0.30.2
 ```
 
-## Topologia <a name="Topologia "/>
+## Topologia <a name="Topologia"/>
 
 ![Topologia requisitada](https://drive.google.com/uc?export=view&id=13xOWqkC8LU046XoPo-XdJBbqqroRUaaN)<p align = "center">Topologia especificada</p>
 
-Implementou-se no Miniedit, interface visual do Mininet, a rede descrita nas especificaÁıes do trabalho. Foram colocados os hosts e switches conforme o diagrama disponibilizado e ent„o feitos os links (conexıes).
+Implementou-se no Miniedit, interface visual do Mininet, a rede descrita nas especifica√ß√µes do trabalho. Foram colocados os hosts e switches conforme o diagrama disponibilizado e ent√£o feitos os links (conex√µes).
 
 ![Topologia implementada](https://drive.google.com/uc?export=view&id=13xromADgS_3FzvsjK3g9WBujLNjIjAxi)
 <p align = "center">Topologia implementada no Miniedit</p>
 
-Optou-se por realizar configuraÁıes mais avanÁadas atravÈs de cÛdigo. Portanto, apÛs realizar as conexıes das estruturas da rede, exportou-se o script em Python da topologia nÌvel 2. No arquivo "topo.py", definiu-se endereÁos MAC personalizados para cada um dos hosts (a fim de facilitar o processo de debug) e os endereÁos de IP, conforme as especificaÁıes.
+Optou-se por realizar configura√ß√µes mais avan√ßadas atrav√©s de c√≥digo. Portanto, ap√≥s realizar as conex√µes das estruturas da rede, exportou-se o script em Python da topologia n√≠vel 2. No arquivo "topo.py", definiu-se endere√ßos MAC personalizados para cada um dos hosts (a fim de facilitar o processo de debug) e os endere√ßos de IP, conforme as especifica√ß√µes.
 
 
 ```Python
@@ -58,9 +58,9 @@ Optou-se por realizar configuraÁıes mais avanÁadas atravÈs de cÛdigo. Portanto, 
   ti         = net.addHost('ti',         cls=Host, ip='10.100.2.1/8',   defaultRoute=None, mac='00:00:00:00:00:f8')
   internet   = net.addHost('internet',   cls=Host, ip='10.100.1.1/8',   defaultRoute=None, mac='00:00:00:00:00:f9')
 ```
-<p align = "center">Trecho do cÛdigo "topo.py"</p>
+<p align = "center">Trecho do c√≥digo "topo.py"</p>
 
-DefiniÁ„o do controlador RYU para os todos os switches:
+Defini√ß√£o do controlador RYU para os todos os switches:
 
 ```Python
   try:
@@ -68,7 +68,7 @@ DefiniÁ„o do controlador RYU para os todos os switches:
       run(['sudo', 'ovs-vsctl', 'set-controller', str(s), 'tcp:127.0.0.1:6653'])
 ```
 
-CriaÁ„o das filas de controle de banda:
+Cria√ß√£o das filas de controle de banda:
 ```Python
 rates = [int(x) for x in [1e6, 10e6, 20e6]]
     for s in net.switches:
@@ -87,20 +87,20 @@ rates = [int(x) for x in [1e6, 10e6, 20e6]]
 ```
 
 
-Com a topologia devidamente implementada, iniciou-se o desenvolvimento da aplicaÁ„o SDN de orquestraÁ„o.
+Com a topologia devidamente implementada, iniciou-se o desenvolvimento da aplica√ß√£o SDN de orquestra√ß√£o.
 
 ## SDN <a name="SDN"/>
 
-Para implementaÁ„o da aplicaÁ„o de controle de acesso SDN, utilizou-se o controlador RYU para realizar o controle dos switches e envio das regras OpenFlow.
-Os principais requisitos que deveriam ser implementados na rede est„o listados a seguir:
+Para implementa√ß√£o da aplica√ß√£o de controle de acesso SDN, utilizou-se o controlador RYU para realizar o controle dos switches e envio das regras OpenFlow.
+Os principais requisitos que deveriam ser implementados na rede est√£o listados a seguir:
  - Controle de acesso entre hosts de diferentes seguimentos.
-	 - Com a devida implementaÁ„o de precedÍncias de prioridade.
- - Permiss„o de acesso entre hosts de um mesmo segmento.
+	 - Com a devida implementa√ß√£o de preced√™ncias de prioridade.
+ - Permiss√£o de acesso entre hosts de um mesmo segmento.
  - Cadastros de Hosts.
- - Controle de acesso de hosts com base no dia e no hor·rio.
+ - Controle de acesso de hosts com base no dia e no hor√°rio.
  - Controle da taxa de download por segmento.
 
-Todas as regras foram implementadas no arquivo "App.py". Algumas das regras implementadas ser„o descritas com mais detalhes nesta documentaÁ„o, a fim de detalhar mais a parte de prioridades.  
+Todas as regras foram implementadas no arquivo "App.py". Algumas das regras implementadas ser√£o descritas com mais detalhes nesta documenta√ß√£o, a fim de detalhar mais a parte de prioridades.  
 
 ### Cadastros de segmentos de rede e hosts
 ```Python
@@ -139,11 +139,11 @@ Todas as regras foram implementadas no arquivo "App.py". Algumas das regras impl
     else:
       return not denied
 ```
-Regras de permiss„o com um mesmo nÌvel de prioridade de uma regra de bloqueio tem preferÍncia. 
+Regras de permiss√£o com um mesmo n√≠vel de prioridade de uma regra de bloqueio tem prefer√™ncia. 
 
-AlÈm disso, para determinar se uma comunicaÁ„o pode ser estabelecida, verifica-se a prioridade da regra de bloqueio ou liberaÁ„o, implementada conforme tabela abaixo:
+Al√©m disso, para determinar se uma comunica√ß√£o pode ser estabelecida, verifica-se a prioridade da regra de bloqueio ou libera√ß√£o, implementada conforme tabela abaixo:
 
-|Prioridade | Tipo de conex„o  |
+|Prioridade | Tipo de conex√£o  |
 |:---:|:---:|
 | 1 | Host - Host |
 | 2 | Host - Segmento|
@@ -152,31 +152,31 @@ AlÈm disso, para determinar se uma comunicaÁ„o pode ser estabelecida, verifica-s
 Onde 1 representa a maior prioridade e 3 a menor prioridade.
 
 **Exemplos**
-> Um liberaÁ„o de comunicaÁ„o host-host tem prioridade em relaÁ„o a um bloqueio feito no segmento onde eles se localizam
+> Um libera√ß√£o de comunica√ß√£o host-host tem prioridade em rela√ß√£o a um bloqueio feito no segmento onde eles se localizam
 
-> Caso hajam duas regras, uma de bloqueio e outra de permiss„o para a comunicaÁ„o visitante1-internet, a comunicaÁ„o ser· liberada, pois regras de liberaÁ„o com a mesma prioridade prevalecem.
+> Caso hajam duas regras, uma de bloqueio e outra de permiss√£o para a comunica√ß√£o visitante1-internet, a comunica√ß√£o ser√° liberada, pois regras de libera√ß√£o com a mesma prioridade prevalecem.
 
 
 
 
 ## Testes da Interface REST  <a name="REST"/>
 
-Para realizaÁ„o de testes da rede SDN, a equipe optou por utilizar o Postman, uma plataforma que auxilia no processo de desenvolvimento e testes de APIs.
-No Postman, foi criada uma coleÁ„o de requisiÁıes, a fim de atender a todas as situaÁıes propostas no roteiro do trabalho, dentre elas:
+Para realiza√ß√£o de testes da rede SDN, a equipe optou por utilizar o Postman, uma plataforma que auxilia no processo de desenvolvimento e testes de APIs.
+No Postman, foi criada uma cole√ß√£o de requisi√ß√µes, a fim de atender a todas as situa√ß√µes propostas no roteiro do trabalho, dentre elas:
 
 - Cadastro de segmento de rede e hosts.
 - Listagem dos segmentos cadastrados.
-- RemoÁ„o de hosts e segmentos de rede.
-- CriaÁ„o de regras de controle de acesso b·sica por segmentos.
-- CriaÁ„o de regra de controle de acesso b·sica por hosts.
-	- Com a devida validaÁ„o das prioridades.
-- CriaÁ„o de regra de controle de acesso b·sica por host e segmento.
-- CriaÁ„o de regras de acesso com restriÁ„o de data e hor·rio.
-- CriaÁ„o de regras de controle de acesso com restriÁ„o de banda de download.
+- Remo√ß√£o de hosts e segmentos de rede.
+- Cria√ß√£o de regras de controle de acesso b√°sica por segmentos.
+- Cria√ß√£o de regra de controle de acesso b√°sica por hosts.
+	- Com a devida valida√ß√£o das prioridades.
+- Cria√ß√£o de regra de controle de acesso b√°sica por host e segmento.
+- Cria√ß√£o de regras de acesso com restri√ß√£o de data e hor√°rio.
+- Cria√ß√£o de regras de controle de acesso com restri√ß√£o de banda de download.
 - Listagem das regras de controle existente.
-- RemoÁ„o de regras de controle.
+- Remo√ß√£o de regras de controle.
 
-Portanto, para cada um dos cen·rios exemplos acima, implementou-se no controlador os comandos a serem realizados ao receber cada uma das requisiÁıes.
+Portanto, para cada um dos cen√°rios exemplos acima, implementou-se no controlador os comandos a serem realizados ao receber cada uma das requisi√ß√µes.
 ```Python
  @route('', '/nac/segmentos/', methods=['GET'])
   def r2(self, req, **kwargs):
@@ -187,15 +187,15 @@ Portanto, para cada um dos cen·rios exemplos acima, implementou-se no controlado
     except:
       return Response(status=500)
 ```
-<p align = "center">CÛdigo da API para o comando de listagem dos segmentos</p>
+<p align = "center">C√≥digo da API para o comando de listagem dos segmentos</p>
 
-O arquivo da coleÁ„o est· disposto neste repositÛrio e pode ser importado na aplicaÁ„o para agilizar o processo de testes em outras m·quinas.
+O arquivo da cole√ß√£o est√° disposto neste reposit√≥rio e pode ser importado na aplica√ß√£o para agilizar o processo de testes em outras m√°quinas.
 
-## Testes Funcionais (ExecuÁ„o do CÛdigo) <a name="Testes"/>
+## Testes Funcionais (Execu√ß√£o do C√≥digo) <a name="Testes"/>
 
-#### AtravÈs do passo a passo a seguir, È possÌvel executar o Mininet e a aplicaÁ„o controladora para testar se a rede se comporta conforme o esperado.
+#### Atrav√©s do passo a passo a seguir, √© poss√≠vel executar o Mininet e a aplica√ß√£o controladora para testar se a rede se comporta conforme o esperado.
 
-1. Com o terminal aberto na pasta base do repositÛrio, utilizar o comando ‡ seguir para limpeza do Mininet.
+1. Com o terminal aberto na pasta base do reposit√≥rio, utilizar o comando √† seguir para limpeza do Mininet.
 	```console
 	sudo mn -c
 	```
@@ -205,14 +205,14 @@ O arquivo da coleÁ„o est· disposto neste repositÛrio e pode ser importado na apl
 	clear && sudo python3 topo.py
 	```
 
-3. Em outro terminal, tambÈm na pasta base do repositÛrio, iniciar a aplicaÁ„o de controle.
+3. Em outro terminal, tamb√©m na pasta base do reposit√≥rio, iniciar a aplica√ß√£o de controle.
 	 ```console
 	 clear && ryu-manager app.py
 	 ```
 
-4. Com os dois terminais executando o Mininet e a aplicaÁ„o controladora, utilizar a coleÁ„o implementada no Postman para enviar requisiÁıes.
-	- … possÌvel monitorar o recebimento das requisiÁıes atravÈs do terminal do controlador.
-	- TambÈm È possÌvel monitorar a conex„o de um host com o outro realizando pings atravÈs do Mininet:
+4. Com os dois terminais executando o Mininet e a aplica√ß√£o controladora, utilizar a cole√ß√£o implementada no Postman para enviar requisi√ß√µes.
+	- √â poss√≠vel monitorar o recebimento das requisi√ß√µes atrav√©s do terminal do controlador.
+	- Tamb√©m √© poss√≠vel monitorar a conex√£o de um host com o outro realizando pings atrav√©s do Mininet:
 		 ```console
 		visitante1 ping internet
 		```
